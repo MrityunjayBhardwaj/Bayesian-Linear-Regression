@@ -5,12 +5,12 @@
 
 function(global){
 
-    function BCF(trainX = [],trainY = [],testX = [],testY = []){
+    function LBF(trainX = [],trainY = [],testX = [],testY = []){
 
-        return new bcf(trainX,trainY,testX,testY);
+        return new lbf(trainX,trainY,testX,testY);
     }
 
-    function bcf(trainX,trainY,testX,testY){
+    function lbf(trainX,trainY,testX,testY){
 
         /* private properties: */
         // collection of all the bassis function name;
@@ -318,16 +318,16 @@ function(global){
         };
 
     }
-    bcf.prototype = {
+    lbf.prototype = {
         /* parant function:- */
 
         // Maybe we can use the prototype of a potential Bayes.js Library.
     }
 
     /* assigning our function to our global Window Object */
-    global.BCF = BCF;
+    global.LBF = LBF;
 
-    console.log("added BCF");
+    console.log("added LBF");
 
     }(window)
 )
