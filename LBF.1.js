@@ -1,10 +1,14 @@
 (
+    // TODO: Add a parameter distribution DONE!
+    // TODO: Add predictive distribution. DONE!
+    // TODO: Add Evidence Approximation   DONE!
+
 function(global){
 
     /**
      * @summary initializing Linear Basis Function .
      * @description NOTE: Inputs must be a tf.tensor Object
-     *  you can also specify these data inidividually by using the approproiate setter functions. 
+     * 
      * @param {object} trainX  
      * @param {object} trainY 
      * @param {object} testX 
@@ -17,7 +21,6 @@ function(global){
 
     function lbf(trainX,trainY,testX,testY){
 
-        // contains all the names of our basis functions.
         let basisFnNames = ["identity","polynomial","gaussian"];
 
         // this array contains all of the available basis functions.
@@ -26,13 +29,16 @@ function(global){
 
             function Polynomial(x,fnParams = {degree: 5}){
                 /* polynomial function */
-                // console.log("poly fn : ",x);
+                // ? should developer be concerned about the dimensions?? i think yes. we will add it later;
+
+                // console.log("this workis y: ",x.shape);
                 const {degree: degree} = fnParams;
                 const polyVec  = tf.linspace(0, degree, degree+1).expandDims(1); // array of all the powers 02Degree
 
                 y = x.pow(polyVec.transpose());
 
-                // here we are cleaning our y by replacing all the NaNs by zeros
+                // console.log(tf.isNaN(x),x,tf.zeros(x.shape));
+                /* here we are cleaning our y by replacing all the NaNs by zeros */
                 return y.where(tf.isNaN(y),y,tf.zeros(y.shape));
             },
             function Gaussian(x,fnParams = {nGaussians : null , mean: null,variance:null}){
@@ -54,7 +60,7 @@ function(global){
 
                 for(let i=0;i<fnParams.nGaussians;i++) {
 
-                // k = exp(-(x-mu)**2)/sigma)
+                // exp(-(x-mu)**2)/sigma)
                 k = tf.exp( tf.mul(tf.scalar(-1),
                                    tf.div(
                                           tf.pow( tf.sub( x ,tf.scalar( mu[i] ) ) , 2 ),
@@ -116,11 +122,6 @@ function(global){
             return {testX: testX,testY: testY};
         };
 
-        this.getBasisFnNameList = function(){
-            //returns an array of  all the names of available basis functions.
-            return basisFnNames;
-        };
-
         /**
          * @summary specify which Basis function to use.
          * @description it takes 2 arguments (1): function name and (2): params, each params 
@@ -129,7 +130,7 @@ function(global){
          *  - "Identity" : which is simply f(x) = x; takes no special parameters.
          *  - "polynomial" : fits a polynomial curve of specific degree specified.
          *  - "gaussian" : fits multiple number of gaussian function 
-         * if the second argument isn'y specified then all the parameters are learned 
+         * if the second argument isn't specified then all the parameters are learned 
          * from the data using model selection.
          * @example 
          * this.useBasisFn("identity");
@@ -167,9 +168,11 @@ function(global){
          */
         this.addBasisFn = function(newFn,name="newFunction"){
 
-            //  if needed , generate a unique name for this custom user defined basis function.
+            // TODO: Validate the function and its output dimensionality.
+
             let count = 0;
             while(basisFnNames(name)){
+                // if the name is already in use chage it.
                 name = name+`_${count}`
                 count++;
             }
@@ -178,25 +181,29 @@ function(global){
             basisFnArr.push(newFn);
         };
 
+        this.getBasisFnNameList = function(){
+            // gives the names of all the basis function.
+            return basisFnNames;
+        };
 
         /**
          * @summary this function calculates the mean and variance of our weights for the given data.
          * @param { tf.tensor } x 
-         * @param { tf.tensor } y 
+         * @param { tf.tensor } t 
          * @param { tf.tensor } alpha specify the uncertainty in our Weights 
          * @param { tf.tensor } beta  specify the uncertainty in our data
-         * @return { object } {mean (design matrix ) , variance , precision}
+         * @return { object } {mean , variance , precision}
          */
-        this.paramPDF = function(x,y,alpha,beta){
-            /* calculates the pdf and sufficient statistics for our weights */
+        this.paramPDF = function(x,t,alpha,beta){
+            /* calculates the pdf and sufficient statistics for our parameter "w" */
 
-            // console.log(alpha,beta);
-           const phiX = cBasisFn(x,cBasisFnParams);
+            const phiX = cBasisFn(x,cBasisFnParams);
            let precision_p1 = tf.mul(tf.scalar(alpha),tf.eye(phiX.shape[1])) // covariance matrix of isotropic gaussian.
            let precision_p2 = tf.mul(tf.scalar(beta),tf.matMul(phiX.transpose(),phiX));
            let precision    = tf.add(precision_p1,precision_p2);
+
            let variance = tf.tensor( math.inv(precision.arraySync()) ); // using gauss jordan method. 
-           let mean = tf.mul(tf.scalar(beta) , tf.matMul(variance,tf.matMul(phiX.transpose(),y)));
+           let mean = tf.mul(tf.scalar(beta) , tf.matMul(variance,tf.matMul(phiX.transpose(),t)));
 
            return { mean , variance , precision};
         };
@@ -212,7 +219,6 @@ function(global){
         this.predictedPDF = function(x,weightMean,weightVariance,beta){
             /* calculates the predicted Y and uncertianity associated with it. (result of using Bayesian Approach) */
 
-            // console.log("from predictedPDF: ",x.print());
             const phiX = cBasisFn(x,cBasisFnParams);
             y = phiX.matMul(weightMean);
             // uncertainty in our predictions.
@@ -224,22 +230,21 @@ function(global){
 
         /**
          * @summary computes evidence function a.k.a mariginal log likelihood function. for the given x'es
+         * @param { tf.tensor } x 
+         * @param { tf.tensor } y 
          * @param { number } alpha
          * @param { number } beta
-         * @param { tf.tensor } x if its not specified then this function uses trainX
-         * @param { tf.tensor } y if its not specified then this function uses trainY
          */
-        this.evidenceFn = function(alpha,beta,x,y){
-           
-            x = x || trainX;
-            y = y || trainY;
-
+        this.evidenceFn = function(x,t,alpha,beta){
+            /* compute the evidence function a.k.a log marginal likelihood */
+            
             const weightMean  = model.Weights.mean;
             const weightVariance  = model.Weights.variance;
             const weightPrecision = tf.tensor(math.inv(weightVariance.arraySync()));
 
 
             const phiX = cBasisFn(x,cBasisFnParams);
+            // const {mean:weightMean,variance:weightVariance,precision_} = this.paramPDF(phiX,t,alpha,beta);
 
             const {0:N , 1:M} = phiX.shape;
             const E_D = tf.mul( 
@@ -247,7 +252,7 @@ function(global){
                                 tf.sum( 
                                         tf.pow( 
                                                 tf.sub(
-                                                        y ,
+                                                        t ,
                                                         phiX.matMul(weightMean)
                                                       ),
                                                       2
@@ -266,7 +271,7 @@ function(global){
             
             const E_mN = tf.add(E_D , E_W);
 
-            const eviFn_p1 = tf.scalar( M*Math.log(alpha) + N*Math.log(beta) - N*Math.log(2*Math.PI) );
+            const eviFn_p1 = tf.scalar( M*Math.log(alpha) + N*Math.log(beta) - N*Math.log(2*Math.PI)) ;
             const eviFn_p2 = E_mN.neg();
             const eviFn_p3 = tf.log( math.det( weightPrecision.arraySync() ) ).neg();
 
@@ -280,47 +285,80 @@ function(global){
         /**
          * @summary this function tries to find the alpha and beta by iteratively and jointly maximize the evidence function
          * @param { tf.tensor } x 
-         * @param { tf.tensor } y 
-         * @param { number } initAlpha initial value of alpha.
-         * @param { number } initBeta  initial value of beta.
+         * @param { tf.tensor } t 
+         * @param { number } alpha_0 initial value of alpha.
+         * @param { number } beta_0  initial value of beta.
          * @param { number } maxItr maximum number of iteration is allowed for this function to reach the maximum point.
          * @param { number } tollerance assume convergence if the gradient difference is smaller then this tollerance value. 
-         * @param { boolean } printInfo if true alpha and beta are printed in each iteration.
+         * 
          */
 
-        this.evidenceMaximization = function(x= trainX,y = trainY,initAlpha,initBeta,printInfo = false,maxItr = 200,tollerance = 1e-2){
+        this.evidenceMaximization = function(x,t,alpha_0,beta_0,maxItr = 200,tollerance = 1e-2){
            
-            initAlpha = initAlpha || 1e-5;
-            initBeta  = initBeta  || 1e-5;
+            alpha_0 = alpha_0 || 1e-3;
+            beta_0  = beta_0  || 1e-5;
 
             const {0:N , 1:M} = x.shape;
 
             const phiX = cBasisFn(x,cBasisFnParams);
-            let initEigenvalues = (nd.la.eigenvals(nd.array(phiX.transpose().matMul(phiX).reverse().arraySync())));
+        //     let phiX = [[1, 0.001    , 0.000001, 0        , 0        ],
+        //         [1, 0.112    , 0.012544, 0.0014049, 0.0001574],
+        //         [1, 0.223    , 0.049729, 0.0110896, 0.002473 ],
+        //         [1, 0.334    , 0.111556, 0.0372597, 0.0124447],
+        //         [1, 0.445    , 0.198025, 0.0881211, 0.0392139],
+        //         [1, 0.556    , 0.309136, 0.1718796, 0.0955651],
+        //         [1, 0.667    , 0.444889, 0.296741 , 0.1979262],
+        //         [1, 0.778    , 0.605284, 0.4709109, 0.3663687],
+        //         [1, 0.8890001, 0.790321, 0.7025954, 0.6246073],
+        //         [1, 1        , 1       , 1        , 1        ]]
+
+        // t =   [[-0.0800581],
+        //     [0.6038209 ],
+        //     [1.0003519 ],
+        //     [0.795733  ],
+        //     [0.2109738 ],
+        //     [-0.3361936],
+        //     [-0.933997 ],
+        //     [-0.9665811],
+        //     [-0.5177265],
+        //     [-0.0333505]]
+
+
+            // t = tf.tensor(t);
+            // phiX = tf.tensor(phiX);
+
+            // phiX.print();
+
+
+            // const trueEigen = [5.64487858e-05,4.82649380e-03,1.58017463e-01,2.55904474e+00, 1.65480440e+01] 
+
+            eigenvalues_0 = (nd.la.eigenvals(nd.array(phiX.transpose().matMul(phiX).reverse().arraySync())));
+
+            let foo = phiX.transpose().matMul(phiX).arraySync();
+            // console.log(eigenvalues_0);
+            // console.log(trueEigen);
+
 
             const eValsArr = [];
-            for(let i=0;i<initEigenvalues.shape[0];i++){
-                eValsArr.push(initEigenvalues(i).re);
+            for(let i=0;i<eigenvalues_0.shape[0];i++){
+                eValsArr.push(eigenvalues_0(i).re);
             }
 
-            initEigenvalues = tf.tensor(eValsArr)
+            eigenvalues_0 = tf.tensor(eValsArr)
 
 
-            let alpha = initAlpha;
-            let beta  = initBeta;
-
-            if (printInfo)
-                console.log(`init) alpha: ${alpha} and beta: ${beta}`);
+            let alpha = alpha_0;
+            let beta = beta_0;
 
             for(let i=0;i< maxItr ; i++){
                 let beta_pre = beta;
                 let alpha_pre = alpha;
                 
-                const eigenvalues = tf.mul( initEigenvalues ,beta);
+                eigenvalues = tf.mul( eigenvalues_0 ,beta);
 
-                const {mean: weightMean,variance: weightVariance,precision: weightPrecision} = this.paramPDF(phiX,y,alpha,beta);
+                const {mean: weightMean,variance: weightVariance,precision: weightPrecision} = this.paramPDF(phiX,t,alpha,beta);
 
-                const gamma = tf.sum(tf.div(eigenvalues, tf.add(eigenvalues , tf.scalar(alpha))));
+                gamma = tf.sum(tf.div(eigenvalues, tf.add(eigenvalues , tf.scalar(alpha))));
                 alpha = tf.div(gamma , tf.sum(tf.pow(weightMean, 2))).flatten().arraySync()[0] || alpha;
 
                 beta =  tf.div( 
@@ -333,7 +371,7 @@ function(global){
                                         tf.sum(
                                                 tf.pow(
                                                         tf.sub(
-                                                                y,
+                                                                t,
                                                                 tf.matMul(phiX,weightMean),
                                                             ),
                                                         2
@@ -342,67 +380,22 @@ function(global){
                                         )
                                     ).flatten().arraySync()[0]  || beta ;
 
-                if( printInfo)
-                    console.log(`i = ${i} )  alpha : ${alpha} and beta : ${beta} `);
-
+                console.log(alpha,beta);
+            // console.log("difference:",(Math.abs(alpha_pre - alpha)),(Math.abs(beta_pre - beta) ));
                 if ((( (Math.abs(alpha_pre - alpha)) < tollerance) && (alpha_pre !== alpha ))
                                             &&
                     ( (Math.abs(beta_pre - beta) )  < tollerance) && (beta_pre !== beta ))
                 {
+
                     console.log(`converged in ${i} iterations`);
                     return {alpha,beta};
                 }
             }
 
-            console.log("can'y converge please try with different initial values");
+            console.log("can't converge please try with different initial values");
+            // return  this.evidenceMaximization(x,t,math.random()*1,0);
             return {alpha,beta};
         }
-
-        /**
-         * @summary this function trains our model using the given data and parameters
-         * @description this function trains our model by first learn the alpha and beta
-         * if none of them is provided/specified using evidenceMaximization,
-         * then it uses these hyperparameters in learning our weights (the reason why we train our model.) 
-         * then we use these weight to calculate our prediction. in test() function.
-         * @param { number } alpha specify the uncertainty in our Weights 
-         * @param { number } beta specify the uncertainty in our data
-         */
-        this.train = function(alpha=null ,beta = null){
-            // in this block we are going to be calculating the hyperparameters aswell as the 
-            // parameter distribution i.e, p(w | y,alpha,beta);
-
-            if (!(alpha && beta)){
-                // if the any one of the hyper parameter is unknown then approximate the values from the trianing data.
-                alpha =  alpha || model.hyperParameters.alpha;
-                beta  =  beta  || model.hyperParameters.beta;
-                const {alpha:newAlpha,beta:newBeta} = this.evidenceMaximization(trainX,trainY,alpha,beta);
-
-                alpha = alpha || newAlpha;
-                beta  = beta  || newBeta;
-
-            }
-
-            const {mean: weightMean,variance: weightVariance,precision: weightPrecision} =  this.paramPDF(trainX,trainY,alpha,beta);
-
-            /* adding our parameters to our model. */
-            model.Weights.mean = weightMean;
-            model.Weights.variance = weightVariance;
-            model.hyperParameters.alpha = alpha;
-            model.hyperParameters.beta  = beta;
-
-            return this;
-        };
-
-        /**
-         * @summary this function produces our predicted "y"
-         * @param { tf.tensor } newtestX if we want to test our model on a different dataset then what we have initially specified then we can specify this new testX here.
-         */
-        this.test = function(newtestX = null){
-
-            // const phi_testX = cBasisFn( newtestX || testX,cBasisFnParams);
-            return this.predictedPDF( newtestX || testX,model.Weights.mean,model.Weights.variance,model.hyperParameters.beta);
-        };
-
 
         /**
          * @summary Sample the Weights from parameter distribution. using learned mean and variance values.
@@ -432,6 +425,9 @@ function(global){
          * @return { array } array of sampled y values.
          */
         this.genY = function(SampleSize){
+            // generate Y by first generating new Weight vectors from parameter distribution 
+            // and then using tht to generate new Y.
+
             const newGenY = [];
             const phi_testX = cBasisFn(testX,cBasisFnParams);
             for(let weightVec of this.genW(SampleSize)){
@@ -440,9 +436,61 @@ function(global){
             }
             return newGenY; 
         };
+
+        /**
+         * @summary this function trains our model using the given data and parameters
+         * @description this function trains our model by first learn the alpha and beta
+         * if none of them is provided/specified using evidenceMaximization,
+         * then it uses these hyperparameters in learning our weights (the reason why we train our model.) 
+         * then we use these weight to calculate our prediction. in test() function.
+         * @param { number } alpha specify the uncertainty in our Weights 
+         * @param { number } beta specify the uncertainty in our data
+         */
+        this.train = function(alpha=null ,beta = null){
+            // in this block we are going to be calculating the hyperparameters aswell as the 
+            // parameter distribution i.e, p(w | t,alpha,beta);
+
+            
+
+            if (!(alpha && beta)){
+                // if the any one of the hyper parameter is unknown then approximate the values from the trianing data.
+                const {alpha:newAlpha,beta:newBeta} = this.evidenceMaximization(trainX,trainY,alpha,beta);
+
+                alpha = newAlpha || alpha || model.hyperParameters.alpha;
+                beta  = newBeta  || beta  || model.hyperParameters.beta;
+
+            }
+
+            const {mean: weightMean,variance: weightVariance,precision: weightPrecision} =  this.paramPDF(trainX,trainY,alpha,beta);
+
+            /* adding our parameters to our model. */
+            model.Weights.mean = weightMean;
+            model.Weights.variance = weightVariance;
+            model.hyperParameters.alpha = alpha;
+            model.hyperParameters.beta  = beta;
+
+            return this;
+        };
+
+        /**
+         * @summary this function produces our predicted "y"
+         * @param { tf.tensor } newtestX if we want to test our model on a different dataset then what we have initially specified then we can specify this new testX here.
+         */
+        this.test = function(newtestX = null){
+
+            // const phi_testX = cBasisFn( newtestX || testX,cBasisFnParams);
+            return this.predictedPDF(( newtestX || testX),model.Weights.mean,model.Weights.variance,model.hyperParameters.beta);
+        };
+
     }
 
-    /* assigning our function to our global Object */
+    lbf.prototype = {
+        /* parant function:- */
+
+        // Maybe we can use the prototype of a potential Bayes.js Library.
+    }
+
+    /* assigning our function to our global Window Object */
     global.LBF = LBF;
 
     console.log("added LBF");
