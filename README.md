@@ -6,11 +6,9 @@ A simple Library built on top of tensorflow.js which allow you to solve bayesian
 
 download or clone this repo and then add this to your index.html
 
-replace "yout_file_path" to the directory inwhich you have put this repository. 
-
 ```html
 
-<script src="your_file_path/dist/LBF.min.js"></script>
+<script src="your_file_path_here/dist/LBF.min.js"></script>
 ```
 
 
@@ -24,14 +22,15 @@ const y = tf.sin(y);
 const test_x = tf.linspace(-1.5, 1.5, 10).expandDims(1);
 const test_y = tf.sin(test_x);
 
+/*specify hyperparameters */
+const alpha = 5e-3; // uncertainty in parameter 'w'
+const beta  = 11.1; // uncertainty in prediction.
 
 /* creating a model and predicting y */
-
 const lbf = LBF(x,y,test_x,test_y);
 
 // fitting a polynomial kernel of degree 8. and fetching our predicted y'es.
-const { y:predictedY , yVariance : predVariance } = lbf.useBasisFn("polynomial",{degree: 8})
-                                                       .train().test();
+const { y:predictedY , yVariance : predVariance } = lbf.useBasisFn("polynomial",{degree: 8}).train(alpha,eta).test();
 
 
 predictedY.print() 
@@ -77,7 +76,7 @@ const {alpha : newAlpha , beta : newBeta } = lbf.evidenceMaximization(initAlpha 
 ```
 or you can wait for the next update to come inwhich i implement some other more robust techinques for finding our hyperparameters like ELBO and EM algorithms.
 
-####Model-selection
+#### Model-selection
 
 we can also do model selection like for eg. if we want to find the most optimial degree for our polynomial function or if we want to find weather should i use gaussian or my own custom basis function.
 
