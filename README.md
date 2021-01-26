@@ -12,7 +12,7 @@ download or clone this repo and then add this to your index.html
 
 ```html
 
-<script src="your_file_path_here/dist/LBF.min.js"></script>
+<script src="your_file_path_here/dist/BLR.min.js"></script>
 ```
 
 
@@ -31,10 +31,10 @@ const alpha = 5e-3; // uncertainty in parameter 'w'
 const beta  = 11.1; // uncertainty in prediction.
 
 /* creating a model and predicting y */
-const lbf = LBF(x,y,test_x,test_y);
+const blr = BLR(x,y,test_x,test_y);
 
 // fitting a polynomial kernel of degree 8. and fetching our predicted y'es.
-const { y:predictedY , yVariance : predVariance } = lbf.useBasisFn("polynomial",{degree: 8}).train(alpha,eta).test();
+const { y:predictedY , yVariance : predVariance } = blr.useBasisFn("polynomial",{degree: 8}).train(alpha,eta).test();
 
 
 predictedY.print() 
@@ -49,10 +49,10 @@ gaussian, identity basis functions. or even pass our own custom basis function.
 ```javascript
 
 // fit 10 gaussian functions onto our data sets. 
-lbf.useBasisFn("gaussian",{nGaussians: 10});
+blr.useBasisFn("gaussian",{nGaussians: 10});
 
 // identity basis function which is juts f(x) = x;
-lbf.useBasisFn("identity");
+blr.useBasisFn("identity");
 
 // creating our custom basis function
 const myBF = function(x,param = {pow : 2}){
@@ -62,7 +62,7 @@ const myBF = function(x,param = {pow : 2}){
 }
 
 // adding our basis function and using it to fit our data.
-lbf.addBasisFn(myBF , "myBasisFn").useBasisFn("myBasisFn",{pow: 5});
+blr.addBasisFn(myBF , "myBasisFn").useBasisFn("myBasisFn",{pow: 5});
 
 ```
 
@@ -76,7 +76,7 @@ but unfortunatly the huge drawback if this method is that they dont always conve
 const alpha =  0.01;
 const beta  =  1e-5;
 
-const {alpha : newAlpha , beta : newBeta } = lbf.evidenceMaximization(initAlpha = alpha,initBeta = beta);
+const {alpha : newAlpha , beta : newBeta } = blr.evidenceMaximization(initAlpha = alpha,initBeta = beta);
 ```
 or you can wait for the next update to come inwhich i implement some other more robust techinques for finding our hyperparameters like ELBO and EM algorithms.
 
@@ -111,11 +111,11 @@ because we have learned our mean and variance of our parameter PDF we can easily
 
 /* ...some code... */
 
-let lbf = LBF(x,y,test_x,test_y);
-lbf.useBasisFn("polynomial",{degree: 6}).train();
+let blr = BLR(x,y,test_x,test_y);
+blr.useBasisFn("polynomial",{degree: 6}).train();
 
 // generate 10 new curves by using the weights sampled from parameter distribution.
-lbf.genY(SampleSize = 10);
+blr.genY(SampleSize = 10);
 
 ```
 
