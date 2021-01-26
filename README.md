@@ -121,7 +121,5 @@ blr.genY(SampleSize = 10);
 
 ```
 
-and if we plot it, it looks something like this one:-
-
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
