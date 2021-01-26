@@ -29,20 +29,74 @@ const test_x = tf.linspace(-1.5, 1.5, 10).expandDims(1);
 const test_y = tf.sin(test_x);
 
 /*specify hyperparameters */
-const alpha = 5e-3; // uncertainty in parameter 'w'
-const beta  = 11.1; // uncertainty in prediction.
+const alpha = 5e-3; // parameter variance
+const beta  = 11.1; // predictive variance 
 
 /* creating a model and predicting y */
 const blr = BLR(x,y,test_x,test_y);
 
 // fitting a polynomial kernel of degree 8. and fetching our predicted y'es.
-const { y:predictedY , yVariance : predVariance } = blr.useBasisFn("polynomial",{degree: 8}).train(alpha,eta).test();
+const { y:predictedY , yVariance : predVariance } = blr.useBasisFn("polynomial",{degree: 8}).train(alpha,beta).test();
 
 
 predictedY.print() 
 predVariance.print()
 
 ```
+
+**NOTE**: if alpha and beta are not specified, the function will automatically try to learn the hyperparameters from the training data by maximizing the model evidence.
+
+but unfortunatly the huge drawback of this method is that they don't always converges. mostly due to the fact that, it rely heavily on the initial alpha and beta so, if it isn't working for you, then you might have to try again by setting different init values of alpha and beta :
+
+```javascript
+
+// init hyperparams
+const alpha =  0.01;
+const beta  =  1e-5;
+
+// finding the best alpha and beta 
+const {alpha : newAlpha , beta : newBeta } = blr.evidenceMaximization(initAlpha = alpha,initBeta = beta);
+```
+
+#### Model-selection
+
+We can also do model selection like for eg. if we want to find the most optimial degree for our polynomial function or if we want to find weather should i use gaussian or my own custom basis function.
+
+We can do that by using evidenceFn() method, which just calculate the marginal-log-likelihood and any model which has higher value will be our best model.
+
+```javascript
+
+const results = [];
+for(let i=0;i<1;i++){
+    blr.useBasisFn("polynomial",{degree: i}).train();
+    let k = blr.evidenceFn(trainX,trainY,alpha,beta).flatten().arraySync();
+    results.push(k)
+}
+
+```
+
+Now if we plot the results it looks something like this:-
+
+<img src="assets/plot.png" width="500px"/>
+
+which clearly suggest that for this data, degree 3 polynomial is the most optimal option for us.
+
+#### Generating Data
+
+Because we have learned our mean and variance of our parameter distribution we can easily generate pedicted Y by sampling weights from parameter dist using genY() method.
+
+```javascript
+
+/* ...some code... */
+
+let blr = BLR(x,y,test_x,test_y);
+blr.useBasisFn("polynomial",{degree: 6}).train();
+
+// generate 10 new curves by using the weights sampled from parameter distribution.
+blr.genY(SampleSize = 10);
+
+```
+
 #### Custom Basis Function
 
 we can also use different basis function as well such as 
@@ -67,59 +121,5 @@ const myBF = function(x,param = {pow : 2}){
 blr.addBasisFn(myBF , "myBasisFn").useBasisFn("myBasisFn",{pow: 5});
 
 ```
-
-**NOTE**: if alpha and beta are not specified, the function will automatically try to learn the hyperparameters from the training data by using evidence Approximation.
-
-but unfortunatly the huge drawback if this method is that they dont always converges mostly due to the fact that it relay heavily on the initial alpha and betas so if it isn't working for you, then you might try again by setting different init values of alpha and beta :
-
-```javascript
-
-// init hyperparams
-const alpha =  0.01;
-const beta  =  1e-5;
-
-const {alpha : newAlpha , beta : newBeta } = blr.evidenceMaximization(initAlpha = alpha,initBeta = beta);
-```
-or you can wait for the next update to come inwhich i implement some other more robust techinques for finding our hyperparameters like ELBO and EM algorithms.
-
-#### Model-selection
-
-we can also do model selection like for eg. if we want to find the most optimial degree for our polynomial function or if we want to find weather should i use gaussian or my own custom basis function.
-
-```javascript
-
-const results = [];
-for(let i=0;i<1;i++){
-    blr.useBasisFn("polynomial",{degree: i}).train();
-    let k = blr.evidenceFn(trainX,trainY,alpha,beta).flatten().arraySync();
-    results.push(k)
-}
-
-```
-
-I can do that by using evidenceFn() method which just calculate the marginal-log-likelihood.
-
-Now if i plot the results it looks something like this:-
-
-<img src="assets/plot.png" width="500px"/>
-
-which clearly suggest that for this data. degree 3 polynomial is the most optimal option for us and we dont have to calculate the some higher degree polynomial unnecessarily.
-
-#### Generating Data
-
-because we have learned our mean and variance of our parameter PDF we can easily generate pedicted Y by sampling weights from parameter PDFs and that is exactly what this function does:-
-
-```javascript
-
-/* ...some code... */
-
-let blr = BLR(x,y,test_x,test_y);
-blr.useBasisFn("polynomial",{degree: 6}).train();
-
-// generate 10 new curves by using the weights sampled from parameter distribution.
-blr.genY(SampleSize = 10);
-
-```
-
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
