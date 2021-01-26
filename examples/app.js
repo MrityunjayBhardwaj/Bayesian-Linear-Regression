@@ -10,7 +10,7 @@ const testX = tf.linspace(-0.5, 1.0, ntestSamples).expandDims(1);
 const testY = tf.sin(testX.mul(tf.scalar(2 * Math.PI))); //sin(2*pi*x)
 
 
-const bcf = LBF(trainX,trainY,testX,testY);
+const bcf = BLR(trainX,trainY,testX,testY);
 // const {beta: newBeta,alpha: newAlpha} = bcf.evidenceMaximization(trainX,trainY,0.0001,0.0);
 bcf.useBasisFn("polynomial",{degree: 8});
 
@@ -27,8 +27,8 @@ varVec.print();
 
 // const beta = 1 / (0.3 ** 2)
 // const alpha = 0.005
-// const predictedY = LBF(trainX,trainY,testX,testY).train().test();
-// const predictedY = LBF(trainX,trainY,testX,testY).useBasisFn("polynomial").train().test();
+// const predictedY = BLR(trainX,trainY,testX,testY).train().test();
+// const predictedY = BLR(trainX,trainY,testX,testY).useBasisFn("polynomial").train().test();
 
 // experimental :-
 // for(let i=0;i<1;i++){
@@ -38,4 +38,4 @@ varVec.print();
 //     // k.print();
 // }
 
-// const lbf = LBF(trainX,trainY,testX,testY).learnBasisFn().train().test();
+// const lbf = BLR(trainX,trainY,testX,testY).learnBasisFn().train().test();
