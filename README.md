@@ -1,6 +1,10 @@
-# Linear-Basis-Fn JS
+# Bayesian Linear Regression
 
-A simple Library built on top of tensorflow.js which allow you to solve bayesian linear regression/curve fitting problems.
+A simple Library built on top of tensorflow.js which allow you to solve bayesian linear regression problems.
+
+<div style="text-align: center">
+    <img src="assets/darkBLR.png" width="800px"/>
+</div>
 
 ## Installation
 
@@ -84,7 +88,6 @@ we can also do model selection like for eg. if we want to find the most optimial
 
 const results = [];
 for(let i=0;i<1;i++){
-    i = 4; 
     bcf.useBasisFn("polynomial",{degree: i}).train();
     let k = bcf.evidenceFn(trainX,trainY,alpha,beta).flatten().arraySync();
     results.push(k)
@@ -96,7 +99,7 @@ I can do that by using evidenceFn() method which just calculate the marginal-log
 
 Now if i plot the results it looks something like this:-
 
-#### add PLOT here!!
+<img src="assets/plot.png" width="500px"/>
 
 which clearly suggest that for this data. degree 3 polynomial is the most optimal option for us and we dont have to calculate the some higher degree polynomial unnecessarily.
 
@@ -122,8 +125,6 @@ and if we plot it, it looks something like this one:-
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
-Please make sure to update tests as appropriate.
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
