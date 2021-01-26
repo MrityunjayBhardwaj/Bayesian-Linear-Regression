@@ -88,8 +88,8 @@ we can also do model selection like for eg. if we want to find the most optimial
 
 const results = [];
 for(let i=0;i<1;i++){
-    bcf.useBasisFn("polynomial",{degree: i}).train();
-    let k = bcf.evidenceFn(trainX,trainY,alpha,beta).flatten().arraySync();
+    blr.useBasisFn("polynomial",{degree: i}).train();
+    let k = blr.evidenceFn(trainX,trainY,alpha,beta).flatten().arraySync();
     results.push(k)
 }
 
