@@ -6,13 +6,15 @@ A simple Library built on top of tensorflow.js which allow you to solve bayesian
     <img src="assets/darkBLR.png" width="800px"/>
 </div>
 
-## Installation
+🗒: Note that this project is meant to be used for learning and researching purposes only and **it is not meant to be used for production.**
 
-download or clone this repo and then add this to your index.html
+## Setup
+
+Download or clone this repo and then add this to your index.html
 
 ```html
 
-<script src="your_file_path_here/dist/BLR.min.js"></script>
+<script src="your_file_path_here/lib/BLR.js"></script>
 ```
 
 
@@ -120,11 +122,6 @@ blr.genY(SampleSize = 10);
 ```
 
 and if we plot it, it looks something like this one:-
-
-
-
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
