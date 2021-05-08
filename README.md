@@ -24,7 +24,7 @@ Download or clone this repo and then add this to your index.html
 
 /* generating synthetic data */
 const x = tf.linspace(0.1,1.0, 5).expandDims(1); 
-const y = tf.sin(y);
+const y = tf.sin(x);
 const test_x = tf.linspace(-1.5, 1.5, 10).expandDims(1);
 const test_y = tf.sin(test_x);
 
